@@ -1,12 +1,16 @@
 /* eslint-disable */
 const TelegramApi = require('node-telegram-bot-api');
+const { linkButton } = require('./buttons/linkButton.js');
+const { menuButtons } = require('./buttons/menuButtons.js');
 const dataFile = require('./data.js');
+const { bucketButtons } = require('./functions/bucketButtons.js');
 const func = require('./functions/createButtons');
 const token = '6023939055:AAEQdfOhcVbW4d3AC9BHXtNygRuWAXvZkKY';
 
 const db = dataFile.data;
 
 const { createButtons, createSingleButton } = func;
+const { readFolder } = require('./server/index.js');
 
 const bot = new TelegramApi(token, { polling: true });
 bot.setMyCommands([
@@ -17,11 +21,17 @@ bot.setMyCommands([
 ]);
 
 const mainMenuButtons = createButtons({ data: db, rowsNumbs: 2 });
+// const mainMenuButtons = menuButtons();
 const backToMenuBtn = createSingleButton('<- На главную', '/start');
 const buttons = createButtons({ data: db.allSection.content.folders, rowsNumbs: 0 });
 
-const readContent = async (chatId, content) => {
-  if (!content.message && content.files.length === 0) {
+const sendAllContent = async (chatId, content) => {
+  if (
+    !content.message.length &&
+    !content.files.length &&
+    !content.folders.length &&
+    !content.images.length
+  ) {
     await bot.sendMessage(
       chatId,
       `<strong><i>Этот раздел пока что пуст, ожидайте обновления!</i></strong>`,
@@ -32,14 +42,23 @@ const readContent = async (chatId, content) => {
     );
   }
   if (content.message) {
-    await bot.sendMessage(chatId, `${content.message}`);
+    for (let i = 0; i < content.message.length; i++) {
+      await bot.sendMessage(chatId, `${content.message}`);
+    }
   }
   if (content.files) {
     for (let i = 0; i < content.files.length; i++) {
-      await bot.sendDocument(chatId, `${content.files[i].fileUrl}`, {
-        caption: `${content.files[i].name}`,
-      });
+      console.log(content.files[i]);
+      const linkBtn = linkButton(content.files[i].url);
+      await bot.sendMessage(chatId, `${content.files[i].name.slice(1)}`, linkBtn);
     }
+  }
+  if (content.folders && content.folders.length > 1) {
+    bucketButtons(content.folders).then((res) => {
+      console.log(res);
+      bot.sendMessage(chatId, 'Папки', res);
+    });
+    console.log(content.folders);
   }
 };
 
@@ -75,17 +94,27 @@ const getQuizQuestions = (obj = { count: 0 }) => {
   return shuffle(tests).slice(0, obj.count);
 };
 
-const start = () => {
+const start = async () => {
+  const mainBtn = await menuButtons();
   bot.on('message', async (msg) => {
     const text = msg.text;
     const chatId = msg.chat.id;
 
     if (text === '/start') {
-      return bot.sendMessage(chatId, `Здравствуй, ${msg.chat.username}! `, mainMenuButtons);
+      menuButtons().then((res) => {
+        bot.sendMessage(chatId, `Здравствуй, ${msg.chat.username}! `, res);
+      });
+      // return bot.sendMessage(chatId, `Здравствуй, ${msg.chat.username}! `, mainMenuButtons);
     }
 
     if (text === '/menu') {
-      return bot.sendMessage(chatId, 'Меню:', mainMenuButtons);
+      menuButtons()
+        .then((res) => {
+          bot.sendMessage(chatId, 'Меню:', res);
+        })
+        .catch((err) => {
+          bot.sendMessage(chatId, 'Произошла ошибка');
+        });
     }
 
     if (text === '/flip') {
@@ -116,26 +145,41 @@ const start = () => {
     const data = msg.data;
     const chatId = msg.message.chat.id;
 
-    if (data === '/practiceDoc') {
-      await bot.sendMessage(chatId, 'Документация по практике:');
-      await bot.sendDocument(chatId, './files/practice/2019.pdf', {
-        caption:
-          'ПРАКТИКА ДЛЯ ПОЛУЧЕНИЯ КВАЛИФИКАЦИИ РАБОЧЕГО «ОПЕРАТОР ЭЛЕКТРОННО-ВЫЧИСЛИТЕЛЬНЫХ МАШИН»',
-      });
-      await bot.sendDocument(chatId, './files/practice/plan.doc', {
-        caption: 'Каляндарна-тэматычныплан',
-      });
+    if (data.includes('f?')) {
+      const folder = data.slice(2, data.length);
+      readFolder(folder)
+        .then((res) => {
+          sendAllContent(chatId, res);
+        })
+        .catch((err) => {
+          bot.sendMessage(chatId, 'Произошла ошибка');
+        });
+      // await bot.sendMessage(chatId, data);
+      // readFolder(folder).then((res) => {
+      //   console.log(res);
+      // });
+      // console.log(folder);
     }
+    // if (data === '/practiceDoc') {
+    //   await bot.sendMessage(chatId, 'Документация по практике:');
+    //   await bot.sendDocument(chatId, './files/practice/2019.pdf', {
+    //     caption:
+    //       'ПРАКТИКА ДЛЯ ПОЛУЧЕНИЯ КВАЛИФИКАЦИИ РАБОЧЕГО «ОПЕРАТОР ЭЛЕКТРОННО-ВЫЧИСЛИТЕЛЬНЫХ МАШИН»',
+    //   });
+    //   await bot.sendDocument(chatId, './files/practice/plan.doc', {
+    //     caption: 'Каляндарна-тэматычныплан',
+    //   });
+    // }
 
-    if (data === '/allSection') {
-      await bot.sendMessage(chatId, 'Все разделы:', buttons);
-    }
+    // if (data === '/allSection') {
+    //   await bot.sendMessage(chatId, 'Все разделы:', buttons);
+    // }
 
-    if (data.includes('/theme')) {
-      const theme = db.allSection.content.folders[data.slice(1)];
-      await bot.sendMessage(chatId, `<i>${theme.name}:</i>`, { parse_mode: 'HTML' });
-      readContent(chatId, theme.content);
-    }
+    // if (data.includes('/theme')) {
+    //   const theme = db.allSection.content.folders[data.slice(1)];
+    //   await bot.sendMessage(chatId, `<i>${theme.name}:</i>`, { parse_mode: 'HTML' });
+    //   readContent(chatId, theme.content);
+    // }
 
     if (data === '/vocabulary') {
       bot.off('message', findDefinition);
@@ -200,24 +244,25 @@ const start = () => {
     // }
     // console.log(testStart);
     if (data === '/test') {
-      bot.sendMessage(chatId, 'Начало теста', {
-        reply_markup: JSON.stringify({
-          keyboard: [[{ text: 'adadad' }]],
-          resize_keyboard: true,
-        }),
-      });
+      // bot.sendMessage(chatId, 'Начало теста', {
+      //   reply_markup: JSON.stringify({
+      //     keyboard: [[{ text: 'adadad' }]],
+      //     resize_keyboard: true,
+      //   }),
+      // });
+      await bot.sendMessage(chatId, '@QuizBot quiz:SutSytdw');
     }
-    if (data !== '/test') {
-      bot.getChat(chatId).then((res) => {
-        console.log(res);
-      });
-      bot.sendMessage(chatId, 'Начало теста', {
-        reply_markup: JSON.stringify({
-          remove_keyboard: true,
-          resize_keyboard: true,
-        }),
-      });
-    }
+    // if (data !== '/test') {
+    //   bot.getChat(chatId).then((res) => {
+    //     console.log(res);
+    //   });
+    //   bot.sendMessage(chatId, 'Начало теста', {
+    //     reply_markup: JSON.stringify({
+    //       remove_keyboard: true,
+    //       resize_keyboard: true,
+    //     }),
+    //   });
+    // }
   });
 };
 
