@@ -2,12 +2,11 @@
 const TelegramApi = require('node-telegram-bot-api');
 const { linkButton } = require('./buttons/linkButton.js');
 const { menuButtons } = require('./buttons/menuButtons.js');
-const dataFile = require('./data.js');
 const { bucketButtons } = require('./functions/bucketButtons.js');
 const func = require('./functions/createButtons');
-const token = '6023939055:AAEQdfOhcVbW4d3AC9BHXtNygRuWAXvZkKY';
-
-const db = dataFile.data;
+const token = '6087753732:AAHDzs91SXPdP2xbfMz_eS5jRy-LiMccYQk';
+const webAppUrl = 'https://playful-centaur-f5a6b2.netlify.app';
+const { findDef } = require('./functions/findDef.js');
 
 const { createButtons, createSingleButton } = func;
 const { readFolder } = require('./server/index.js');
@@ -16,14 +15,10 @@ const bot = new TelegramApi(token, { polling: true });
 bot.setMyCommands([
   { command: '/start', description: 'Начало работы' },
   { command: '/menu', description: 'Открыть меню' },
-  { command: '/flip', description: 'Бросить монетку' },
-  { command: '/roll', description: 'Случайное число от 1 до 100' },
+  { command: '/help', description: 'Справка' },
 ]);
 
-const mainMenuButtons = createButtons({ data: db, rowsNumbs: 2 });
-// const mainMenuButtons = menuButtons();
 const backToMenuBtn = createSingleButton('<- На главную', '/start');
-const buttons = createButtons({ data: db.allSection.content.folders, rowsNumbs: 0 });
 
 const sendAllContent = async (chatId, content) => {
   if (
@@ -43,7 +38,7 @@ const sendAllContent = async (chatId, content) => {
   }
   if (content.message) {
     for (let i = 0; i < content.message.length; i++) {
-      await bot.sendMessage(chatId, `${content.message}`);
+      await bot.sendMessage(chatId, `${content.message[i]}`);
     }
   }
   if (content.files) {
@@ -53,49 +48,25 @@ const sendAllContent = async (chatId, content) => {
       await bot.sendMessage(chatId, `${content.files[i].name.slice(1)}`, linkBtn);
     }
   }
+  if (content.images) {
+    try {
+      for (let i = 0; i < content.images.length; i++) {
+        await bot.sendPhoto(chatId, `${content.images[i]}`);
+      }
+    } catch (error) {
+      console.log(error.message);
+    }
+  }
   if (content.folders && content.folders.length > 1) {
     bucketButtons(content.folders).then((res) => {
       console.log(res);
-      bot.sendMessage(chatId, 'Папки', res);
+      bot.sendMessage(chatId, 'Содержание:', res);
     });
     console.log(content.folders);
   }
 };
 
-const findDefinition = async (msg) => {
-  if (msg.text[0] === '/') {
-    return;
-  }
-  const array = db.vocabulary.content;
-  const chatId = msg.chat.id;
-  console.log(msg.text);
-  const res = array.filter((item) => {
-    if (item.abbreviation.toLowerCase() === msg.text.toLowerCase()) {
-      return true;
-    }
-  });
-  if (res.length === 0) {
-    return bot.sendMessage(chatId, 'К сожалению, термин не найден :(');
-  }
-  await bot.sendMessage(chatId, 'Вот что удалось найти:');
-  for (let i = 0; i < res.length; i++) {
-    return bot.sendMessage(chatId, res[i].definition);
-  }
-};
-
-const getQuizQuestions = (obj = { count: 0 }) => {
-  const tests = db.tests.content;
-  function shuffle(array) {
-    return array.sort(() => Math.random() - 0.5);
-  }
-  if (obj.count === 0) {
-    return shuffle(tests);
-  }
-  return shuffle(tests).slice(0, obj.count);
-};
-
 const start = async () => {
-  const mainBtn = await menuButtons();
   bot.on('message', async (msg) => {
     const text = msg.text;
     const chatId = msg.chat.id;
@@ -104,7 +75,6 @@ const start = async () => {
       menuButtons().then((res) => {
         bot.sendMessage(chatId, `Здравствуй, ${msg.chat.username}! `, res);
       });
-      // return bot.sendMessage(chatId, `Здравствуй, ${msg.chat.username}! `, mainMenuButtons);
     }
 
     if (text === '/menu') {
@@ -125,7 +95,16 @@ const start = async () => {
         bot.sendMessage(chatId, '<i>Решка</i>', { parse_mode: 'HTML' });
       }
     }
-
+    if (text === '/help') {
+      await bot.sendMessage(
+        chatId,
+        'С помощью этого бота Вы можете ознакомиться с документацией по практике, со всем практическим материалом практики, просмотреть словарь терминов и закрепить их изучение в игровой форме "Листай и запоминай", выполнить тесты по каждому разделу и итоговое тестирование.\n 💯 Бот позволяет учащимся самостоятельно подготовиться к успешной сдаче квалификационного экзамена, выполнив все практические занятия, просмотрев вспомогательный материал и пройдя все имеющиеся тесты.\n ℹ️ Вы можете отправить боту термин из курса практики, в ответ Вам отправит его определение.',
+      );
+    }
+    if (!text.includes('/')) {
+      const result = findDef(text);
+      await bot.sendMessage(chatId, result);
+    }
     if (text.includes('/roll')) {
       if (text === '/roll') {
         return bot.sendMessage(chatId, Math.floor(Math.random() * 100) + 1);
@@ -139,130 +118,30 @@ const start = async () => {
     }
   });
 
-  let testStart = false;
-
   bot.on('callback_query', async (msg) => {
     const data = msg.data;
     const chatId = msg.message.chat.id;
 
     if (data.includes('f?')) {
       const folder = data.slice(2, data.length);
+      console.log(data);
       readFolder(folder)
         .then((res) => {
           sendAllContent(chatId, res);
         })
         .catch((err) => {
+          console.log(err.message);
           bot.sendMessage(chatId, 'Произошла ошибка');
         });
-      // await bot.sendMessage(chatId, data);
-      // readFolder(folder).then((res) => {
-      //   console.log(res);
-      // });
-      // console.log(folder);
-    }
-    // if (data === '/practiceDoc') {
-    //   await bot.sendMessage(chatId, 'Документация по практике:');
-    //   await bot.sendDocument(chatId, './files/practice/2019.pdf', {
-    //     caption:
-    //       'ПРАКТИКА ДЛЯ ПОЛУЧЕНИЯ КВАЛИФИКАЦИИ РАБОЧЕГО «ОПЕРАТОР ЭЛЕКТРОННО-ВЫЧИСЛИТЕЛЬНЫХ МАШИН»',
-    //   });
-    //   await bot.sendDocument(chatId, './files/practice/plan.doc', {
-    //     caption: 'Каляндарна-тэматычныплан',
-    //   });
-    // }
-
-    // if (data === '/allSection') {
-    //   await bot.sendMessage(chatId, 'Все разделы:', buttons);
-    // }
-
-    // if (data.includes('/theme')) {
-    //   const theme = db.allSection.content.folders[data.slice(1)];
-    //   await bot.sendMessage(chatId, `<i>${theme.name}:</i>`, { parse_mode: 'HTML' });
-    //   readContent(chatId, theme.content);
-    // }
-
-    if (data === '/vocabulary') {
-      bot.off('message', findDefinition);
-      bot.sendMessage(chatId, 'Введи термин, который необходимо расшифровать:');
-      bot.on('message', findDefinition);
     }
 
-    if (data !== '/vocabulary') {
-      bot.off('message', findDefinition);
+    if (data === 'GAME') {
+      await bot.sendMessage(chatId, 'Нажми, чтобы начать', {
+        reply_markup: {
+          inline_keyboard: [[{ text: 'Старт!', web_app: { url: webAppUrl } }]],
+        },
+      });
     }
-
-    // if (data === '/test') {
-    //   if (!testStart) {
-    //     testStart = true;
-    //     console.log(testStart);
-    //     let arr = getQuizQuestions();
-    //     let qusCount = arr.length;
-    //     const pollArr = [];
-    //     let result = 0;
-    //     let ansCount = 0;
-    //     const createQuestion = () => {
-    //       bot.sendChatAction(chatId);
-    //       for (let i = 0; i < arr.length; i++) {
-    //         bot
-    //           .sendPoll(chatId, arr[i].question, arr[i].options, {
-    //             correct_option_id: arr[i].current,
-    //             explanation: 'Paris is the capital of France.',
-    //             is_anonymous: false,
-    //             allows_multiple_answers: true,
-    //             type: 'quiz',
-    //           })
-    //           .then((poll) => {
-    //             pollArr.push({ id: Number(poll.poll.id), current: arr[i].current });
-    //           });
-    //       }
-    //     };
-
-    //     const onAnsFunc = (ans) => {
-    //       if (pollArr.find((item) => item.id === +ans.poll_id).current === ans.option_ids[0]) {
-    //         result++;
-    //       }
-    //       if (ansCount + 1 === qusCount) {
-    //         console.log(testStart);
-    //         testStart = false;
-    //         bot.sendMessage(chatId, `Тест завершен [${result} / ${qusCount}]`);
-    //         count = 0;
-    //         result = 0;
-    //         qusCount = 0;
-    //       }
-
-    //       console.log(ansCount);
-    //       console.log(ans);
-    //       console.log(ans.option_ids[0]);
-    //       ansCount++;
-    //     };
-
-    //     bot.on('poll_answer', onAnsFunc);
-    //     createQuestion();
-    //   } else {
-    //     bot.sendMessage(chatId, 'Прежде чем начать новый тест, закончите этот!');
-    //   }
-    // }
-    // console.log(testStart);
-    if (data === '/test') {
-      // bot.sendMessage(chatId, 'Начало теста', {
-      //   reply_markup: JSON.stringify({
-      //     keyboard: [[{ text: 'adadad' }]],
-      //     resize_keyboard: true,
-      //   }),
-      // });
-      await bot.sendMessage(chatId, '@QuizBot quiz:SutSytdw');
-    }
-    // if (data !== '/test') {
-    //   bot.getChat(chatId).then((res) => {
-    //     console.log(res);
-    //   });
-    //   bot.sendMessage(chatId, 'Начало теста', {
-    //     reply_markup: JSON.stringify({
-    //       remove_keyboard: true,
-    //       resize_keyboard: true,
-    //     }),
-    //   });
-    // }
   });
 };
 

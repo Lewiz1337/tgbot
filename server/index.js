@@ -1,12 +1,11 @@
 const { S3Client, ListObjectsV2Command, GetObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const axios = require('axios');
-
+const { sortData } = require('../functions/sortData');
 const AWS_REGION = 'ru-central1';
 const AWS_USER_KEY = 'YCAJE6siEraRi4cIcY-oHEIlr';
 const AWS_USER_SECRET_KEY = 'YCNoj5hXMECA5RwJIwRd203KtOel8aknhc1OX-Ak';
 const BUCKET = 'telegram-id-awdkjawdkjh';
-
 const accessKeyId = AWS_USER_KEY;
 const secretAccessKey = AWS_USER_SECRET_KEY;
 
@@ -96,7 +95,7 @@ const readFolder = async (folder) => {
       message.push(value);
       continue;
     }
-    if (keys[i].includes('.png') || keys[i].includes('.jpeg')) {
+    if (keys[i].includes('.png') || keys[i].includes('.jpeg') || keys[i].includes('.jpg')) {
       const value = await getUrl(keys[i]);
       images.push(value);
       continue;
@@ -111,26 +110,11 @@ const readFolder = async (folder) => {
   }
 
   return {
-    folders,
+    folders: folders.sort(sortData),
     message,
     images,
     files,
   };
 };
-
-// readFolder('data').then((res) => {
-//   console.log(res);
-// });
-// readFolder('Документация по практике').then((res) => {
-//   console.log(res);
-// });
-
-// const getObject = new GetObjectCommand({
-//   Bucket: 'telegram-id-awdkjawdkjh',
-//   Key: `data/test.txt`,
-//   // Key: 'data/2019.pdf',
-// });
-
-// getUrl('data/2019.pdf');
 
 module.exports = { openFolder, readFolder };

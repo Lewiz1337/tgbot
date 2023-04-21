@@ -1,7 +1,5 @@
 const { readFolder } = require('../server/index.js');
 
-// console.log(readFolder);
-
 const menuButtons = async () => {
   const read = await readFolder('data');
   const res = read.folders
@@ -17,20 +15,15 @@ const menuButtons = async () => {
     });
 
   res.push([
-    { text: 'Пробные тесты', callback_data: 'TEST' },
-    { text: 'Словарь терминов', callback_data: 'VOCABULARY' },
+    { text: 'Итоговый тест по практике', callback_data: 'TEST' },
+    { text: 'Листай и запоминай!', callback_data: 'GAME' },
   ]);
-  // console.log(res);
-  // res.push({ text: 'Словарь терминов', callback_data: 'VOCABULARY' });
+
   return {
     reply_markup: JSON.stringify({
       inline_keyboard: res,
-      // resize_keyboard: true,
     }),
   };
 };
-// menuButtons().then((res) => {
-//   console.log(res);
-// });
 
 module.exports = { menuButtons };
