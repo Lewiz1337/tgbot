@@ -3,27 +3,25 @@ const TelegramApi = require('node-telegram-bot-api');
 const { linkButton } = require('./buttons/linkButton.js');
 const { menuButtons } = require('./buttons/menuButtons.js');
 const { bucketButtons } = require('./functions/bucketButtons.js');
-const func = require('./functions/createButtons');
 const token = '6087753732:AAHDzs91SXPdP2xbfMz_eS5jRy-LiMccYQk';
 
 const webAppUrl = 'https://playful-centaur-f5a6b2.netlify.app';
 const testUrl = 'https://onlinetestpad.com/o64i6x7k5zy3y';
 
-// 'https://onlinetestpad.com/o64i6x7k5zy3y'
 const { findDef } = require('./functions/findDef.js');
 
-const { createButtons, createSingleButton } = func;
 const { readFolder } = require('./server/index.js');
 
 const bot = new TelegramApi(token, { polling: true });
+
+// Список команд
 bot.setMyCommands([
   { command: '/start', description: 'Начало работы' },
   { command: '/menu', description: 'Открыть меню' },
   { command: '/help', description: 'Справка' },
 ]);
 
-const backToMenuBtn = createSingleButton('<- На главную', '/start');
-
+// Функция отправки данных из папки
 const sendAllContent = async (chatId, content) => {
   if (
     !content.message.length &&
@@ -70,9 +68,12 @@ const sendAllContent = async (chatId, content) => {
   }
 };
 
+// Входная точка (Запуск бота)
 const start = async () => {
   bot.on('message', async (msg) => {
+    // Текст сообщения
     const text = msg.text;
+    // id чата (нужно для отправки сообщения в чат)
     const chatId = msg.chat.id;
 
     if (text === '/start') {
@@ -80,6 +81,7 @@ const start = async () => {
         bot.sendMessage(chatId, `Здравствуй, ${msg.chat.username}! `, res);
       });
       bot.sendMessage(chatId, ' ', {
+        // Кнопка меню
         reply_markup: {
           keyboard: [[{ text: 'Меню' }]],
           resize_keyboard: true,
@@ -88,7 +90,7 @@ const start = async () => {
         },
       });
     }
-
+    // Функция на выполнения комантлы /menu (Все последующии аналогично)
     if (text === '/menu' || text === 'Меню') {
       menuButtons()
         .then((res) => {
@@ -99,14 +101,6 @@ const start = async () => {
         });
     }
 
-    if (text === '/flip') {
-      const eagle = Math.round(Math.random());
-      if (eagle) {
-        bot.sendMessage(chatId, '<i>Орёл</i>', { parse_mode: 'HTML' });
-      } else {
-        bot.sendMessage(chatId, '<i>Решка</i>', { parse_mode: 'HTML' });
-      }
-    }
     if (text === '/help') {
       await bot.sendMessage(
         chatId,
@@ -117,23 +111,15 @@ const start = async () => {
       const result = findDef(text);
       await bot.sendMessage(chatId, result);
     }
-    if (text.includes('/roll')) {
-      if (text === '/roll') {
-        return bot.sendMessage(chatId, Math.floor(Math.random() * 100) + 1);
-      }
-      const arr = text.split(' ');
-      if (!Number(arr[1])) {
-        return bot.sendMessage(chatId, 'Неверное значение');
-      } else {
-        return bot.sendMessage(chatId, Math.floor(Math.random() * Number(arr[1])) + 1);
-      }
-    }
   });
 
   bot.on('callback_query', async (msg) => {
     const data = msg.data;
     const chatId = msg.message.chat.id;
 
+    // Реагирования на нажатие кнопку (?f - флаг, которые указывает на то, что это папка.
+    // Нужен для того, чтобы кнопка с игрой и тестом не работала по той же логике, что и кнопки,
+    // добавленные с Yandex )
     if (data.includes('f?')) {
       const folder = data.slice(2, data.length);
       console.log(data);
@@ -146,7 +132,7 @@ const start = async () => {
           bot.sendMessage(chatId, 'Произошла ошибка');
         });
     }
-
+    // Игра
     if (data === 'GAME') {
       await bot.sendMessage(chatId, 'Нажмите, чтобы начать', {
         reply_markup: {
@@ -154,6 +140,7 @@ const start = async () => {
         },
       });
     }
+    // Тест
     if (data === 'TEST') {
       await bot.sendMessage(chatId, 'Перейдите по ссылке и пройдите итоговый тест! \n' + testUrl);
     }

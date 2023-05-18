@@ -1,3 +1,4 @@
+// Логика для создания кнопок(папок), полученных из Yandex
 const bucketButtons = async (folders) => {
   const res = folders.map((item) => {
     const text = item.split('/');

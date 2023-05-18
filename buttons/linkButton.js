@@ -1,3 +1,4 @@
+// Кнопка для отправки ссылок
 const linkButton = (url) => {
   return {
     reply_markup: JSON.stringify({

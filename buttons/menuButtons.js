@@ -1,5 +1,6 @@
 const { readFolder } = require('../server/index.js');
 
+// Основные кнопки
 const menuButtons = async () => {
   const read = await readFolder('data');
   const res = read.folders
