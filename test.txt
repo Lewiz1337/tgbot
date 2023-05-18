@@ -1,2 +1,0 @@
-const AWS_USER_KEY = 'YCAJE6siEraRi4cIcY-oHEIlr';
-const AWS_USER_SECRET_KEY = 'YCNoj5hXMECA5RwJIwRd203KtOel8aknhc1OX-Ak';
