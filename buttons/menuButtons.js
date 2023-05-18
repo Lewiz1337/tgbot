@@ -15,7 +15,7 @@ const menuButtons = async () => {
     });
 
   res.push([
-    { text: 'Итоговый тест по практике', callback_data: 'TEST' },
+    { text: 'Итоговый тест', callback_data: 'TEST' },
     { text: 'Листай и запоминай!', callback_data: 'GAME' },
   ]);
 

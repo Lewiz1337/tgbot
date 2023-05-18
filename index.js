@@ -5,7 +5,11 @@ const { menuButtons } = require('./buttons/menuButtons.js');
 const { bucketButtons } = require('./functions/bucketButtons.js');
 const func = require('./functions/createButtons');
 const token = '6087753732:AAHDzs91SXPdP2xbfMz_eS5jRy-LiMccYQk';
+
 const webAppUrl = 'https://playful-centaur-f5a6b2.netlify.app';
+const testUrl = 'https://onlinetestpad.com/o64i6x7k5zy3y';
+
+// 'https://onlinetestpad.com/o64i6x7k5zy3y'
 const { findDef } = require('./functions/findDef.js');
 
 const { createButtons, createSingleButton } = func;
@@ -60,7 +64,7 @@ const sendAllContent = async (chatId, content) => {
   if (content.folders && content.folders.length > 1) {
     bucketButtons(content.folders).then((res) => {
       console.log(res);
-      bot.sendMessage(chatId, 'Содержание:', res);
+      bot.sendMessage(chatId, 'Выберите раздел:', res);
     });
     console.log(content.folders);
   }
@@ -72,12 +76,20 @@ const start = async () => {
     const chatId = msg.chat.id;
 
     if (text === '/start') {
-      menuButtons().then((res) => {
+      await menuButtons().then((res) => {
         bot.sendMessage(chatId, `Здравствуй, ${msg.chat.username}! `, res);
+      });
+      bot.sendMessage(chatId, ' ', {
+        reply_markup: {
+          keyboard: [[{ text: 'Меню' }]],
+          resize_keyboard: true,
+          one_time_keyboard: true,
+          selective: true,
+        },
       });
     }
 
-    if (text === '/menu') {
+    if (text === '/menu' || text === 'Меню') {
       menuButtons()
         .then((res) => {
           bot.sendMessage(chatId, 'Меню:', res);
@@ -101,7 +113,7 @@ const start = async () => {
         'С помощью этого бота Вы можете ознакомиться с документацией по практике, со всем практическим материалом практики, просмотреть словарь терминов и закрепить их изучение в игровой форме "Листай и запоминай", выполнить тесты по каждому разделу и итоговое тестирование.\n 💯 Бот позволяет учащимся самостоятельно подготовиться к успешной сдаче квалификационного экзамена, выполнив все практические занятия, просмотрев вспомогательный материал и пройдя все имеющиеся тесты.\n ℹ️ Вы можете отправить боту термин из курса практики, в ответ Вам отправит его определение.',
       );
     }
-    if (!text.includes('/')) {
+    if (!text.includes('/') && text !== 'Меню') {
       const result = findDef(text);
       await bot.sendMessage(chatId, result);
     }
@@ -136,11 +148,14 @@ const start = async () => {
     }
 
     if (data === 'GAME') {
-      await bot.sendMessage(chatId, 'Нажми, чтобы начать', {
+      await bot.sendMessage(chatId, 'Нажмите, чтобы начать', {
         reply_markup: {
           inline_keyboard: [[{ text: 'Старт!', web_app: { url: webAppUrl } }]],
         },
       });
+    }
+    if (data === 'TEST') {
+      await bot.sendMessage(chatId, 'Перейдите по ссылке и пройдите итоговый тест! \n' + testUrl);
     }
   });
 };
