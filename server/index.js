@@ -30,6 +30,7 @@ const getObjectList = async () => {
       keys.push(item.Key);
     });
   }
+  console.log(keys);
   return keys;
 };
 
